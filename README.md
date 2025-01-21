@@ -20,12 +20,10 @@ This is a fork of the original usbmuxd2 project by [@tihmstar](https://github.co
 
 ### How to build on Debian
 
-Create a directory for the source code:
+Execute the following commands:
 
     mkdir -p /app/src
-
-Then execute the following commands:
-
+    
     apt-get update && apt-get upgrade -y
     apt-get install -y build-essential pkg-config checkinstall git autoconf automake
     apt-get install -y libtool-bin libssl-dev libcurl4-openssl-dev
@@ -69,7 +67,7 @@ Then execute the following commands:
     && make \
     && make install
 
-    git clone https://github.com/fosple/usbmuxd2
+    git clone https://github.com/fosple/usbmuxd2.git \
     && cd /app/src/usbmuxd2 \
     && apt-get install -y clang \
     && ./autogen.sh \
@@ -77,8 +75,8 @@ Then execute the following commands:
     && make \
     && make install
 
-	apt-get install -y avahi-daemon dbus && \
-	apt-get clean
+    apt-get install -y avahi-daemon dbus && \
+    apt-get clean
 
 ## Usage examples
 
@@ -165,6 +163,7 @@ This project is licensed under the GNU Lesser General Public License v3.0 - see 
 ## Credits
 
 Originally developed by [@tihmstar](https://github.com/tihmstar)
+
 Direct IP addition by [@fosple](https://github.com/fosple)
 
 ## Note
