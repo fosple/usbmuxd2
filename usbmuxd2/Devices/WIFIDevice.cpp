@@ -26,15 +26,22 @@
 
 #if defined(HAVE_WIFI_AVAHI) || defined(HAVE_WIFI_MDNS)
 
-WIFIDevice::WIFIDevice(Muxer *mux, WIFIDeviceManager *parent, std::string uuid, std::vector<std::string> ipaddr, std::string serviceName, uint32_t interfaceIndex)
-: Device(mux,Device::MUXCONN_WIFI), _parent(parent), _ipaddr(ipaddr), _serviceName(serviceName), _interfaceIndex(interfaceIndex), _hbclient(NULL), _hbrsp(NULL),
-    _idev(NULL)
+WIFIDevice::WIFIDevice(Muxer *mux, DeviceManager *parent, const std::string &uuid,
+                       const std::vector<std::string> &addresses,
+                       const std::string &serviceName,
+                       int interfaceIndex)
+: Device(mux, MUXCONN_WIFI), tihmstar::Manager()
+, _parent(parent), _selfref()
+, _ipaddr(addresses), _serviceName(serviceName)
+, _interfaceIndex(interfaceIndex)
+, _hbclient(NULL), _hbrsp(NULL), _idev(NULL)
 {
-    strncpy(_serial, uuid.c_str(), sizeof(_serial));
+    strncpy(_serial, uuid.c_str(), sizeof(_serial)-1);
+    _serial[sizeof(_serial)-1] = '\0';
 }
 
 WIFIDevice::~WIFIDevice() {
-    debug("deleting device %s",_serial);
+    debug("deleting device %s", _serial);
     {
         std::unique_lock<std::mutex> ul(_parent->_childrenLck);
         _parent->_children.erase(this);
@@ -72,10 +79,14 @@ void WIFIDevice::afterLoop() noexcept{
     kill();
 }
 
-void WIFIDevice::kill() noexcept{
-    debug("[Killing] WIFIDevice %s",_serial);
-    std::shared_ptr<WIFIDevice> selfref = _selfref.lock();
-    _parent->_reapDevices.post(selfref);
+void WIFIDevice::kill() noexcept {
+    debug("Killing WIFIDevice %s", _serial);
+    stopLoop();
+    if (auto p = dynamic_cast<WIFIDeviceManager*>(_parent)) {
+        p->_reapDevices.post(std::static_pointer_cast<WIFIDevice>(_selfref.lock()));
+    } else if (auto p = dynamic_cast<WIFIDeviceManager_direct*>(_parent)) {
+        p->_reapDevices.post(std::static_pointer_cast<WIFIDevice>(_selfref.lock()));
+    }
 }
 
 void WIFIDevice::deconstruct() noexcept{

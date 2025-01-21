@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <memory>
 
+// Forward declarations
 class Muxer;
 class Client;
 
@@ -24,7 +25,7 @@ public:
 protected:
     Muxer *_mux; //not owned
     mux_conn_type _conntype;
-    int _id; //even ID is USB, odd ID is WiFi
+    int _id;      // even ID is USB, odd ID is WiFi
     char _serial[256];
 
 public:

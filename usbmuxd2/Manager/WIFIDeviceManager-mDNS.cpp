@@ -211,10 +211,16 @@ WIFIDeviceManager::~WIFIDeviceManager(){
     safeClose(_wakePipe[1]);
 }
 
-void WIFIDeviceManager::device_add(std::shared_ptr<WIFIDevice> dev, bool notify){
-    dev->_selfref = dev;
-    _children.insert(dev.get());
-    _mux->add_device(dev, notify);
+void WIFIDeviceManager::device_add(std::shared_ptr<WIFIDevice> dev, bool notify) {
+    try {
+        dev->_selfref = dev;
+        _children.insert(dev.get());
+        _mux->add_device(dev, notify);
+    } catch (const tihmstar::exception& e) {
+        error("Failed to add device: %s", e.what());
+        _children.erase(dev.get());
+        throw;
+    }
 }
 
 bool WIFIDeviceManager::loopEvent(){

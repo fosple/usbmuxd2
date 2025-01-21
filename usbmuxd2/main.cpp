@@ -40,7 +40,7 @@ extern "C"{
 static const char *lockfile = "/var/run/usbmuxd.pid";
 
 static tihmstar::Event terminateEvent;
-static Config *gConfig = nullptr;
+Config *gConfig = nullptr;
 static Muxer *mux = nullptr;
 static int exit_signal = 0;
 static int report_to_parent = 0;
@@ -180,10 +180,12 @@ static void usage(){
     printf("            \t\t\tconnected (sends SIGUSR1 to running instance) and exit.\n");
     printf("  -X, --force-exit\t\tNotify a running instance to exit even if there are still\n");
     printf("                  \t\tdevices connected (always works) and exit.\n");
+    printf("  -c, --connect IP\t\tConnect directly to device at IP address\n");
     printf("      --debug\t\t\tEnable debug logging\n");
     printf("      --allow-heartless-wifi\tAllow WIFI devices without heartbeat to be listed (needed for WIFI pairing)\n");
     printf("      --no-usb\t\t\tDo not start USBDeviceManager\n");
     printf("      --no-wifi\t\t\tDo not start WIFIDeviceManager\n");
+    printf("      --pair-record-id ID\t\tSet the pair record ID for the connection\n");
     printf("\n");
 }
 
@@ -207,6 +209,8 @@ static void parse_opts(int argc, const char **argv){
         {"debug",                   no_argument,        NULL,  0 },
         {"no-usb",                  optional_argument,  NULL,  0 },
         {"no-wifi",                 optional_argument,  NULL,  0 },
+        {"connect",                 required_argument,  NULL, 'c'},
+        {"pair-record-id",          required_argument,  NULL, 'i'},
         {NULL,                      0,                  NULL,  0 }
     };
     int optindex = 0;
@@ -216,7 +220,7 @@ static void parse_opts(int argc, const char **argv){
 #ifdef WANT_SYSTEMD
                             "s"
 #endif
-                            "U:vVxXz";
+                            "U:vVxXzc:i:";
     
     
     while ((opt = getopt_long(argc, (char* const *)argv, opts_spec, longopts, &optindex)) >= 0) {
@@ -228,6 +232,7 @@ static void parse_opts(int argc, const char **argv){
                 if (curopt == "allow-heartless-wifi") {
                     gConfig->allowHeartlessWifi = true;
                 }else if (curopt == "debug") {
+                    verbose += LL_DEBUG;
                     gConfig->debugLevel++;
                 }else if (curopt == "no-usb") {
                     info("Manually disableing USBDeviceManager");
@@ -288,12 +293,26 @@ static void parse_opts(int argc, const char **argv){
             case 'z':
                 gConfig->enableExit = true;
                 break;
-                
+            case 'c':
+                gConfig->connectIP = optarg;
+                break;
+            case 'i':
+                gConfig->pairRecordId = optarg;
+                break;
             default:
                 usage();
                 exit(2);
         }
     }
+
+    if (!gConfig->connectIP.empty() && gConfig->pairRecordId.empty()) {
+        fatal("ERROR: When using --connect, --pair-record-id must also be specified");
+        usage();
+        exit(2);
+    }
+
+    // Set log level to the most verbose level requested
+    log_level = verbose;
 }
 
 
@@ -439,9 +458,14 @@ int main(int argc, const char * argv[]) {
 
     if (gConfig->enableWifiDeviceManager){
         try{
-            mux->spawnWIFIDeviceManager();
-            info("Inited WIFIDeviceManager");
-        }catch (tihmstar::exception &e){
+            if (!gConfig->connectIP.empty()) {
+                mux->spawnWIFIDeviceManager(gConfig->connectIP);
+                info("Inited WIFIDeviceManager in direct mode for IP: %s", gConfig->connectIP.c_str());
+            } else {
+                mux->spawnWIFIDeviceManager();
+                info("Inited WIFIDeviceManager in discovery mode");
+            }
+        } catch (tihmstar::exception &e){
             fatal("failed to spawnWIFIDeviceManager with error=%d (%s)",e.code(),e.what());
         }
     }
@@ -481,7 +505,10 @@ error:
     }
     notice("main reached cleanup");
     if (mux){
+        // This will handle cleanup of any active WiFi direct connections
+        // since WIFIDeviceManager-direct is owned by the muxer
         delete mux;
+        mux = nullptr;
     }
     if (gConfig){
         Config *cfg = gConfig; gConfig = nullptr;

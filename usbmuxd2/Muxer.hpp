@@ -9,6 +9,8 @@
 #define Muxer_hpp
 
 #include "Devices/Device.hpp"
+#include "Manager/DeviceManager.hpp"
+#include "sysconf/sysconf.hpp"
 
 #include <libgeneral/macros.h>
 #include <libgeneral/GuardAccess.hpp>
@@ -16,14 +18,22 @@
 
 #include <set>
 
+#include "Manager/WIFIDeviceManager-direct.hpp"
+
 class ClientManager;
 class USBDeviceManager;
 class WIFIDeviceManager;
+class WIFIDeviceManager_direct;
+
+// Forward declare Config to avoid circular includes
+class Config;
+// Declare the global config variable
+extern Config *gConfig;
 
 class Muxer {
     ClientManager *_climgr;
     USBDeviceManager *_usbdevmgr;
-    WIFIDeviceManager *_wifidevmgr;
+    DeviceManager *_wifidevmgr;
 
     bool _doPreflight;
     bool _allowHeartlessWifi;
@@ -39,7 +49,7 @@ public:
 #pragma mark Managers
     void spawnClientManager();
     void spawnUSBDeviceManager();
-    void spawnWIFIDeviceManager();
+    void spawnWIFIDeviceManager(const std::string &directIP = std::string());
     bool hasDeviceManager() noexcept;
 
 #pragma mark Clients
@@ -48,7 +58,7 @@ public:
     void delete_client(std::shared_ptr<Client> cli) noexcept;
 
 #pragma mark Devices
-    void add_device(std::shared_ptr<Device> dev, bool notify = true) noexcept;
+    void add_device(std::shared_ptr<Device> dev, bool notify = true);
     void delete_device(std::shared_ptr<Device> dev) noexcept;
     void delete_device(uint8_t bus, uint8_t address) noexcept;
     void delete_wifi_pairing_device_with_ip(std::vector<std::string> ipaddrs) noexcept;

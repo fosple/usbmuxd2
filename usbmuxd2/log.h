@@ -28,13 +28,14 @@ extern "C"{
 #   define debug(a ...)
 #endif
     
+    
     enum loglevel {
         LL_FATAL = 0,
-        LL_ERROR,
-        LL_WARNING,
-        LL_INFO,
-        LL_NOTICE,
-        LL_DEBUG
+        LL_ERROR = 1,
+        LL_WARNING = 2,
+        LL_INFO = 3,
+        LL_NOTICE = 4,
+        LL_DEBUG = 5
     };
     
     extern unsigned int log_level;

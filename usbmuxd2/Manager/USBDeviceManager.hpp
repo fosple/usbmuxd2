@@ -9,6 +9,9 @@
 #define USBDeviceManager_hpp
 
 #include "DeviceManager.hpp"
+#include "../Devices/USBDevice.hpp"
+#include <libgeneral/Manager.hpp>
+#include <libgeneral/GuardAccess.hpp>
 #include <libgeneral/Event.hpp>
 #include <libgeneral/DeliveryEvent.hpp>
 #include <libusb.h>
@@ -39,7 +42,7 @@
 
 class USBDevice_receiver;
 class USBDevice;
-class USBDeviceManager : public DeviceManager{
+class USBDeviceManager : public DeviceManager {
     libusb_context *_ctx;
     libusb_hotplug_callback_handle _usb_hotplug_cb_handle;
     

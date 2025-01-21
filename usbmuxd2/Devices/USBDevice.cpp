@@ -6,6 +6,7 @@
 //
 
 #include "USBDevice.hpp"
+#include "../Muxer.hpp"
 #include "../Manager/USBDeviceManager.hpp"
 #include "TCP.hpp"
 

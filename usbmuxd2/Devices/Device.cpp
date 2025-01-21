@@ -6,6 +6,7 @@
 //
 
 #include "Device.hpp"
+#include "../Muxer.hpp"
 
 #pragma mark Device
 Device::Device(Muxer *mux, mux_conn_type conntype)

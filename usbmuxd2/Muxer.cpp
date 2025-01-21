@@ -9,8 +9,10 @@
 #include "Devices/USBDevice.hpp"
 #include "Manager/USBDeviceManager.hpp"
 #include "Manager/ClientManager.hpp"
+#include "Manager/WIFIDeviceManager-direct.hpp"
 #include "Client.hpp"
 #include "sysconf/preflight.hpp"
+#include "sysconf/sysconf.hpp"
 
 #include <libgeneral/macros.h>
 
@@ -31,6 +33,8 @@
 
 #define MAXID (INT_MAX/2)
 #define INVALID_ID (MAXID + 1)
+
+extern Config *gConfig;
 
 Muxer::Muxer(bool doPreflight, bool allowHeartlessWifi)
 : _climgr(nullptr), _usbdevmgr(nullptr), _wifidevmgr(nullptr)
@@ -61,13 +65,31 @@ void Muxer::spawnUSBDeviceManager(){
     _usbdevmgr->startLoop();
 }
 
-void Muxer::spawnWIFIDeviceManager(){
+void Muxer::spawnWIFIDeviceManager(const std::string &connectIP){
 #if defined(HAVE_WIFI_AVAHI) || defined(HAVE_WIFI_MDNS)
-    assure(!_wifidevmgr);
-    _wifidevmgr = new WIFIDeviceManager(this);
+    retassure(!_wifidevmgr, "WIFIDeviceManager already running!");
+    if (!connectIP.empty()) {
+        // Use direct connection mode
+        info("Initializing WIFIDeviceManager in direct mode for IP: %s", connectIP.c_str());
+        _wifidevmgr = new WIFIDeviceManager_direct(this, connectIP, gConfig->pairRecordId);
+    } else {
+        // Use discovery mode with either AVAHI or MDNS
+        #ifdef HAVE_WIFI_AVAHI
+            _wifidevmgr = new WIFIDeviceManager(this);
+        #elif defined(HAVE_WIFI_MDNS)
+            _wifidevmgr = new WIFIDeviceManager(this);
+        #endif
+    }
     _wifidevmgr->startLoop();
 #else
-    reterror("Compiled without wifi support");
+    if (!connectIP.empty()) {
+        // Allow direct connections even without AVAHI/MDNS support
+        retassure(!_wifidevmgr, "WIFIDeviceManager already running!");
+        _wifidevmgr = new WIFIDeviceManager_direct(this, connectIP, gConfig->pairRecordId);
+        _wifidevmgr->startLoop();
+    } else {
+        reterror("Compiled without wifi discovery support");
+    }
 #endif
 }
 
@@ -116,23 +138,23 @@ void Muxer::delete_client(std::shared_ptr<Client> cli) noexcept{
 }
 
 #pragma mark Devices
-void Muxer::add_device(std::shared_ptr<Device> dev, bool notify) noexcept {
-    debug("add_device %s",dev->_serial);
+void Muxer::add_device(std::shared_ptr<Device> dev, bool notify) {
+    debug("add_device %s", dev->_serial);
 
-    //get id of already connected device but with the other connection type
-    //discard the id-based connection type information
+    // Get id of already connected device but with the other connection type
+    // Discard the id-based connection type information
     dev->_id = id_for_device(dev->_serial, dev->_conntype == Device::MUXCONN_USB ? Device::MUXCONN_WIFI : Device::MUXCONN_USB) & ~1;
 
-    if (!dev->_id){
-        //there can be no device with ID 1 or 0
-        //thus if id is 0 then this is the device's first connection
-        //assign it a fresh ID
+    if (!dev->_id) {
+        // There can be no device with ID 1 or 0
+        // Thus if id is 0 then this is the device's first connection
+        // Assign it a fresh ID
         guardRead(_devicesGuard);
     retryID:
         for (auto odev : _devices) {
             if ((odev->_id >> 1) == _newid) {
                 _newid++;
-                if (_newid>MAXID) {
+                if (_newid > MAXID) {
                     _newid = 1;
                     goto retryID;
                 }
@@ -141,10 +163,10 @@ void Muxer::add_device(std::shared_ptr<Device> dev, bool notify) noexcept {
         dev->_id = (_newid << 1);
     }
 
-    //fixup connection information in ID
+    // Fixup connection information in ID
     dev->_id |= (dev->_conntype == Device::MUXCONN_WIFI);
 
-    debug("Muxer: adding device %s assigning id %d",dev->_serial,dev->_id);
+    debug("Muxer: adding device %s assigning id %d", dev->_serial, dev->_id);
 
     {
         guardWrite(_devicesGuard);
@@ -152,30 +174,31 @@ void Muxer::add_device(std::shared_ptr<Device> dev, bool notify) noexcept {
     }
 
 #if defined(HAVE_WIFI_AVAHI) || defined(HAVE_WIFI_MDNS)
-    if (dev->_conntype == Device::MUXCONN_WIFI){
+    if (dev->_conntype == Device::MUXCONN_WIFI) {
         std::shared_ptr<WIFIDevice> wifidev = std::static_pointer_cast<WIFIDevice>(dev);
-        try{
+        try {
             wifidev->startLoop();
-        }catch (tihmstar::exception &e){
-            error("Failed to start WIFIDevice %s with error=%d (%s)",wifidev->_serial,e.code(),e.what());
-            if (!_allowHeartlessWifi){
+        } catch (tihmstar::exception &e) {
+            error("Failed to start WIFIDevice %s with error=%d (%s)", wifidev->_serial, e.code(), e.what());
+            if (!_allowHeartlessWifi) {
                 delete_device(wifidev);
+                throw;
             }
             return;
         }
     }
-#endif //defined(HAVE_WIFI_AVAHI) || defined(HAVE_WIFI_MDNS)
-    
+#endif
+
 #ifdef HAVE_LIBIMOBILEDEVICE
-    if (dev->_conntype == Device::MUXCONN_USB && _doPreflight){
+    if (dev->_conntype == Device::MUXCONN_USB && _doPreflight) {
         try {
-            preflight_device(dev->_serial,dev->_id);
+            preflight_device(dev->_serial, dev->_id);
         } catch (tihmstar::exception &e) {
-            warning("Failed to preflight device '%s' with err:\n%s",dev->_serial,e.dumpStr().c_str());
+            warning("Failed to preflight device '%s' with err:\n%s", dev->_serial, e.dumpStr().c_str());
         }
     }
-#endif //HAVE_LIBIMOBILEDEVICE
-    
+#endif
+
     if (notify) notify_device_add(dev);
 }
 

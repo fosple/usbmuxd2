@@ -34,6 +34,8 @@ public:
     bool useLogfile;
     int debugLevel;
     std::string dropUser;
+    std::string connectIP;
+    std::string pairRecordId;
     
     Config();
     void load();

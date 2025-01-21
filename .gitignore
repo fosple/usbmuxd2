@@ -52,3 +52,4 @@ cache_wrkdir
 *buildroot*
 *.deb
 *.control
+.DS_Store

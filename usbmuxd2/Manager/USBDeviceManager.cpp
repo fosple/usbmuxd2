@@ -7,6 +7,8 @@
 
 #include "USBDeviceManager.hpp"
 #include "../Devices/USBDevice.hpp"
+#include "../Muxer.hpp"
+#include <libgeneral/macros.h>
 
 #include <unistd.h>
 #include <string.h>
