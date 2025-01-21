@@ -120,7 +120,7 @@ If device does not show up, check avahi which is used to discover the iOS device
 
 This should return something like 
 
-    +   eth0 IPv4 ...	 _apple-mobdev2._tcp  local
+    +   eth0 IPv4 ...    _apple-mobdev2._tcp  local
     +   eth0 IPv4 ...    _remotepairing._tcp  local
     +   eth0 IPv6 ...    _apple-mobdev2._tcp  local
     +   eth0 IPv6 ...    _remotepairing._tcp  local
