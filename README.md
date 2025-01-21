@@ -81,12 +81,51 @@ Execute the following commands:
 
 ## Avahi on Debian
 
+First connect the iOS device via USB, then run:
+
     service dbus start
     service avahi-daemon start
 
-    usbmuxd [options]
+    usbmuxd 
 
+On iOS trust the device & enter PIN or use FaceID. 
+
+Check if connection works:
+
+    ideviceinfo
+
+Should show info about your iOS device.
+
+Disconnect from USB.
+
+*Important*: Connect iOS device to Mac Finder / Win iTunes and enable Wifi Sync:
+1. Connect iOS device to Mac via USB
+2. Go to Finder and open iOS device
+3. Check checkbox "Show this iphone when on wifi"
+4. Click "Apply"
+
+Kill usbmuxd (Ctrl+) and start usbmuxd again.
+
+    usbmuxd
+
+Make sure iOS device is on the network and able to accept network connections (screen powered on, sometimes restarts helps), run:
+    
     ideviceinfo -n
+
+Should return device info. It's important to add the `-n` as this requests the info via the network.
+
+If device does not show up, check avahi which is used to discover the iOS device
+
+    avahi-browse -a
+
+This should return something like 
+
+    +   eth0 IPv4 ...	 _apple-mobdev2._tcp  local
+    +   eth0 IPv4 ...    _remotepairing._tcp  local
+    +   eth0 IPv6 ...    _apple-mobdev2._tcp  local
+    +   eth0 IPv6 ...    _remotepairing._tcp  local
+
+If no entry at all shows up, most likely your network config is wrong. If other entries show up, but not `_apple-mobdev2._tcp` and `_remotepairing._tcp` your iOS device does not correctly announce itself to the network.
 
 ## Direct IP connection via wifi on Debian
 
