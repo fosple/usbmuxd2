@@ -22,61 +22,60 @@ This is a fork of the original usbmuxd2 project by [@tihmstar](https://github.co
 
 Execute the following commands:
 
-    mkdir -p /app/src
-    
-    apt-get update && apt-get upgrade -y
-    apt-get install -y build-essential pkg-config checkinstall git autoconf automake
-    apt-get install -y libtool-bin libssl-dev libcurl4-openssl-dev
-    apt-get install -y libusb-1.0.0-dev libavahi-client-dev avahi-daemon avahi-utils
+	mkdir -p /app/src
 
-    mkdir -p /app/src
+	apt-get update && apt-get upgrade -y
+	apt-get install -y build-essential pkg-config checkinstall git autoconf automake
+	apt-get install -y libtool-bin libssl-dev libcurl4-openssl-dev
+	apt-get install -y libusb-1.0.0-dev libavahi-client-dev avahi-daemon avahi-utils
 
-    git clone https://github.com/libimobiledevice/libplist.git \
-    && cd /app/src/libplist \
-    && ./autogen.sh \
-    && make \
-    && make install
+	cd /app/src
 
-    git clone https://github.com/libimobiledevice/libimobiledevice-glue.git \
-    && cd /app/src/libimobiledevice-glue \
-    && ./autogen.sh \
-    && make \
-    && make install
+	git clone https://github.com/libimobiledevice/libplist.git \
+	&& cd /app/src/libplist \
+	&& ./autogen.sh \
+	&& make \
+	&& make install
 
-    git clone https://github.com/libimobiledevice/libtatsu.git \
-    && cd /app/src/libtatsu \
-    && ./autogen.sh \
-    && make \
-    && make install
+	git clone https://github.com/libimobiledevice/libimobiledevice-glue.git \
+	&& cd /app/src/libimobiledevice-glue \
+	&& ./autogen.sh \
+	&& make \
+	&& make install
 
-    git clone https://github.com/libimobiledevice/libusbmuxd.git \
-    && cd /app/src/libusbmuxd \
-    && ./autogen.sh \
-    && make \
-    && make install
+	git clone https://github.com/libimobiledevice/libtatsu.git \
+	&& cd /app/src/libtatsu \
+	&& ./autogen.sh \
+	&& make \
+	&& make install
 
-    git clone https://github.com/libimobiledevice/libimobiledevice.git \
-    && cd /app/src/libimobiledevice \
-    && ./autogen.sh \
-    && make \
-    && make install
+	git clone https://github.com/libimobiledevice/libusbmuxd.git \
+	&& cd /app/src/libusbmuxd \
+	&& ./autogen.sh \
+	&& make \
+	&& make install
 
-    git clone https://github.com/tihmstar/libgeneral.git \
-    && cd /app/src/libgeneral \
-    && ./autogen.sh \
-    && make \
-    && make install
+	git clone https://github.com/libimobiledevice/libimobiledevice.git \
+	&& cd /app/src/libimobiledevice \
+	&& ./autogen.sh \
+	&& make \
+	&& make install
 
-    git clone https://github.com/fosple/usbmuxd2.git \
-    && cd /app/src/usbmuxd2 \
-    && apt-get install -y clang \
-    && ./autogen.sh \
-    && ./configure CC=clang CXX=clang++ \
-    && make \
-    && make install
+	git clone https://github.com/tihmstar/libgeneral.git \
+	&& cd /app/src/libgeneral \
+	&& ./autogen.sh \
+	&& make \
+	&& make install
 
-    apt-get install -y avahi-daemon dbus && \
-    apt-get clean
+	git clone https://github.com/fosple/usbmuxd2.git \
+	&& cd /app/src/usbmuxd2 \
+	&& apt-get install -y clang \
+	&& ./autogen.sh \
+	&& ./configure CC=clang CXX=clang++ \
+	&& make \
+	&& make install
+
+	apt-get install -y avahi-daemon dbus && apt-get clean
 
 ## Usage examples
 
