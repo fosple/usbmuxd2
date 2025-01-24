@@ -56,7 +56,7 @@ void WIFIDeviceManager_direct::device_add(std::shared_ptr<WIFIDevice> dev, bool 
         _mux->add_device(dev, notify);
         debug("Device successfully registered with muxer");
     } catch (const tihmstar::exception& e) {
-        error("Failed to add device: %s", e.what());
+        debug("Failed to add device: %s", e.what());
         _children.erase(dev.get());
         throw;
     }
@@ -155,7 +155,6 @@ void WIFIDeviceManager_direct::tryConnect(){
             debug(" - Service: %s", serviceName.c_str());
             _isConnected = true;
         } catch (const std::exception& e) {
-            error("Failed to add device at %s: %s", _targetIP.c_str(), e.what());
             _isConnected = false;
             throw; // Re-throw to ensure the outer catch block handles it
         }

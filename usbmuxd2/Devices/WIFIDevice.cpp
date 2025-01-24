@@ -65,8 +65,16 @@ bool WIFIDevice::loopEvent(){
     });
     heartbeat_error_t hret = HEARTBEAT_E_SUCCESS;
 
-    retassure((hret = heartbeat_receive_with_timeout(_hbclient,&hbeat,15000)) == HEARTBEAT_E_SUCCESS, "[WIFIDevice] failed to recv heartbeat with error=%d",hret);
-    retassure((hret = heartbeat_send(_hbclient,_hbrsp)) == HEARTBEAT_E_SUCCESS,"[WIFIDevice] failed to send heartbeat");
+    try {
+        retassure((hret = heartbeat_receive_with_timeout(_hbclient,&hbeat,15000)) == HEARTBEAT_E_SUCCESS, "[WIFIDevice] failed to recv heartbeat with error=%d",hret);
+        retassure((hret = heartbeat_send(_hbclient,_hbrsp)) == HEARTBEAT_E_SUCCESS,"[WIFIDevice] failed to send heartbeat");
+    } catch (const std::exception& e) {
+        error("Lost connection to device, trying to reconnect...")
+
+        debug("[WIFIDevice] Exception caught: %s", e.what());
+        return false; // Exit the loop
+    }
+
     return true;
 #endif //HAVE_LIBIMOBILEDEVICE
 }
@@ -81,13 +89,20 @@ void WIFIDevice::afterLoop() noexcept{
 
 void WIFIDevice::kill() noexcept {
     debug("Killing WIFIDevice %s", _serial);
-    stopLoop();
-    if (auto p = dynamic_cast<WIFIDeviceManager*>(_parent)) {
+    
+    try {
+
+        if (auto p = dynamic_cast<WIFIDeviceManager*>(_parent)) {
         p->_reapDevices.post(std::static_pointer_cast<WIFIDevice>(_selfref.lock()));
-    } else if (auto p = dynamic_cast<WIFIDeviceManager_direct*>(_parent)) {
-        p->_reapDevices.post(std::static_pointer_cast<WIFIDevice>(_selfref.lock()));
+        } else if (auto p = dynamic_cast<WIFIDeviceManager_direct*>(_parent)) {
+            p->_reapDevices.post(std::static_pointer_cast<WIFIDevice>(_selfref.lock()));
+        }
+    } catch (...) {
+        debug("Failed to kill WIFIDevice %s", _serial);
     }
+
 }
+
 
 void WIFIDevice::deconstruct() noexcept{
     debug("[Deconstructing] WIFIDevice %s",_serial);

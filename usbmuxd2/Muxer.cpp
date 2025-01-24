@@ -66,8 +66,8 @@ void Muxer::spawnUSBDeviceManager(){
 }
 
 void Muxer::spawnWIFIDeviceManager(const std::string &connectIP){
-#if defined(HAVE_WIFI_AVAHI) || defined(HAVE_WIFI_MDNS)
     retassure(!_wifidevmgr, "WIFIDeviceManager already running!");
+    
     if (!connectIP.empty()) {
         // Use direct connection mode
         info("Initializing WIFIDeviceManager in direct mode for IP: %s", connectIP.c_str());
@@ -80,17 +80,9 @@ void Muxer::spawnWIFIDeviceManager(const std::string &connectIP){
             _wifidevmgr = new WIFIDeviceManager(this);
         #endif
     }
+
+    
     _wifidevmgr->startLoop();
-#else
-    if (!connectIP.empty()) {
-        // Allow direct connections even without AVAHI/MDNS support
-        retassure(!_wifidevmgr, "WIFIDeviceManager already running!");
-        _wifidevmgr = new WIFIDeviceManager_direct(this, connectIP, gConfig->pairRecordId);
-        _wifidevmgr->startLoop();
-    } else {
-        reterror("Compiled without wifi discovery support");
-    }
-#endif
 }
 
 bool Muxer::hasDeviceManager() noexcept{
