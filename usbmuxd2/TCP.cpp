@@ -231,9 +231,9 @@ cnt_label:
     // Update TCP states
     _stx.acked = _stx.ack;
     _stx.seq += len;
-    debug("Sending tcp payload packet: sport=%u dport=%u seq=%u seqAcked=%u ack=%u flags=0x%x len=%zu rwindow=%u[%u] unacked=%llu",
+    debug("Sending tcp payload packet: sport=%u dport=%u seq=%u seqAcked=%u ack=%u flags=0x%x len=%zu rwindow=%u[%u] unacked=%lu",
           htons(tcp_header.th_sport), htons(tcp_header.th_dport), htonl(tcp_header.th_seq), _stx.seqAcked, htonl(tcp_header.th_ack),
-          TH_ACK, len, _stx.inWin, _stx.inWin >> 8, unacked);
+          TH_ACK, len, _stx.inWin, _stx.inWin >> 8, (unsigned long)unacked);
 
     _dev->send_packet(USBDevice::MUX_PROTO_TCP, buf, len, &tcp_header);
     _lockStx.unlock();
