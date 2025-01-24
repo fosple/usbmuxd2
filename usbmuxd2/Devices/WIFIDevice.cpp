@@ -69,7 +69,7 @@ bool WIFIDevice::loopEvent(){
         retassure((hret = heartbeat_receive_with_timeout(_hbclient,&hbeat,15000)) == HEARTBEAT_E_SUCCESS, "[WIFIDevice] failed to recv heartbeat with error=%d",hret);
         retassure((hret = heartbeat_send(_hbclient,_hbrsp)) == HEARTBEAT_E_SUCCESS,"[WIFIDevice] failed to send heartbeat");
     } catch (const std::exception& e) {
-        error("Lost connection to device, trying to reconnect...")
+        error("Lost connection to device, trying to reconnect...");
 
         debug("[WIFIDevice] Exception caught: %s", e.what());
         return false; // Exit the loop
