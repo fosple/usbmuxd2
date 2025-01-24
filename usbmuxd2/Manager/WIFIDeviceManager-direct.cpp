@@ -27,46 +27,60 @@ WIFIDeviceManager_direct::WIFIDeviceManager_direct(Muxer *mux, const std::string
 }
 
 WIFIDeviceManager_direct::~WIFIDeviceManager_direct(){
+    debug("WIFIDeviceManager direct destructor starting");
     stopLoop();
     if (_children.size()) {
         debug("waiting for wifi children to die...");
         std::unique_lock<std::mutex> ul(_childrenLck);
         while (size_t s = _children.size()) {
-            for (auto c : _children) c->kill();
+            debug("Need to kill %zu wifi children",s);
+            for (auto c : _children) {
+                debug("Killing child device");
+                c->kill();
+            }
             uint64_t wevent = _childrenEvent.getNextEvent();
             ul.unlock();
-            debug("Need to kill %zu more wifi children",s);
             _childrenEvent.waitForEvent(wevent);
             ul.lock();
         }
     }
+    debug("All children killed, cleaning up reaper thread");
     _reapDevices.kill();
     _devReaperThread.join();
     
+    debug("Closing pipes");
     safeClose(_wakePipe[0]);
     safeClose(_wakePipe[1]);
+    debug("WIFIDeviceManager direct destructor completed");
 }
 
 void WIFIDeviceManager_direct::device_add(std::shared_ptr<WIFIDevice> dev, bool notify) {
     debug("Adding new WIFIDevice to manager (notify=%s)", notify ? "true" : "false");
     try {
+        std::unique_lock<std::mutex> ul(_childrenLck);
         dev->_selfref = dev;
         _children.insert(dev.get());
         debug("Device added to children list, total devices: %zu", _children.size());
         _mux->add_device(dev, notify);
         debug("Device successfully registered with muxer");
     } catch (const tihmstar::exception& e) {
-        debug("Failed to add device: %s", e.what());
+        error("Failed to add device: %s", e.what());
+        std::unique_lock<std::mutex> ul(_childrenLck);
         _children.erase(dev.get());
         throw;
     }
 }
 
 bool WIFIDeviceManager_direct::loopEvent(){
+    if (_shouldStop) {
+        debug("Loop stopping due to stop flag");
+        return false;
+    }
+    
     if (!_hasAttemptedFirstConnection) {
         _hasAttemptedFirstConnection = true;
         tryConnect();
-        return true;
+        return !_shouldStop;
     }
 
     struct pollfd pfds[] = {
@@ -78,34 +92,68 @@ bool WIFIDeviceManager_direct::loopEvent(){
     
     int res = poll(pfds, 1, 10000); // 10 second timeout
     
+    if (res < 0) {
+        if (errno != EINTR) {
+            error("Poll failed with error: %s", strerror(errno));
+        }
+        return !_shouldStop;
+    }
+    
     if (res == 0) {
-        // Timeout - try to connect
-        if (!_isConnected) {
+        // Timeout
+        if (!_isConnected && !_shouldStop) {
+            debug("Poll timeout, attempting reconnect");
             tryConnect();
         }
     } else if (res > 0) {
-        if (pfds[0].revents & POLLHUP) {
-            return false; // Exit loop
+        if (pfds[0].revents & (POLLHUP | POLLERR)) {
+            debug("Poll detected pipe closed");
+            return false;
+        }
+        if (pfds[0].revents & POLLIN) {
+            char buf[2];
+            if (read(_wakePipe[0], buf, 1) == 1) {
+                debug("Received wake signal");
+            }
         }
     }
     
-    return true;
+    return !_shouldStop;
 }
 
 void WIFIDeviceManager_direct::stopAction() noexcept{
+    debug("Stop action triggered");
+    _shouldStop = true;
+    // Wake up the poll() call
+    char c = 'q';
+    if (write(_wakePipe[1], &c, 1) != 1) {
+        error("Failed to write to wake pipe");
+    }
     safeClose(_wakePipe[1]);
 }
 
 void WIFIDeviceManager_direct::reaper_runloop(){
+    debug("Reaper thread starting");
     while (true) {
-        std::shared_ptr<WIFIDevice>dev;
+        std::shared_ptr<WIFIDevice> dev;
         try {
             dev = _reapDevices.wait();
+            debug("Reaper received device to clean up");
         } catch (...) {
+            debug("Reaper thread interrupted, exiting");
             break;
         }
+        
+        {
+            std::unique_lock<std::mutex> ul(_childrenLck);
+            _children.erase(dev.get());
+            _childrenEvent.notifyAll();
+        }
+        
         _isConnected = false;
+        debug("Deconstructing device");
         dev->deconstruct();
+        debug("Device cleanup completed");
     }
 }
 
